@@ -1,0 +1,20 @@
+name: app-ios
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "app_pacote/**"
+
+jobs:
+  app:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar e abrir os apps no simulador
+        run: bash rodar_app.sh app_pacote resultado_app
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultado-app
+          path: resultado_app/

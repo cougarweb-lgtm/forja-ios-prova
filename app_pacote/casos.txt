@@ -1,0 +1,2 @@
+app ForjaApp.app.tar br.forja.app
+canario Canario.app.tar br.forja.canario
