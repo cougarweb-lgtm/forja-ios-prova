@@ -1,0 +1,2 @@
+canario_stdout_errado
+canario_exit_errado
