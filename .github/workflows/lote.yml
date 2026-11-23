@@ -1,13 +1,17 @@
 name: lote-i4
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner macOS (macos-15, macos-14...)"
+        default: "macos-15"
   push:
     paths:
       - "pacote_i4.sha256"
 
 jobs:
   i4:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
