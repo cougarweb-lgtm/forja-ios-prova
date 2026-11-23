@@ -24,7 +24,6 @@ jobs:
           path: resultado/
 
   i4:
-    if: hashFiles('pacote_i4.sha256') != ''
     runs-on: macos-15
     timeout-minutes: 60
     steps:
