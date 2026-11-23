@@ -11,6 +11,7 @@
 # Verificacao: bash selftest_runner.sh (usa xcrun falso; roda em bash no Windows e no macOS).
 #
 # Changelog
+#   2.1 - cdexec.c: cada binario roda num cwd novo (mkdtemp) quando o clang do simulador esta disponivel.
 #   2.0 - sha invalido reprova antes de qualquer caso; sidecars .stderr_contem/.args/.env/.stdin/.timeout;
 #         TIMEOUT nomeado (watchdog em bash, sem timeout(1)); ms por caso; canarios; resultado.json.
 #         Pacote antigo (stdout e exit) segue valendo sem mudancas.
@@ -25,6 +26,7 @@ FALHAS=0
 MOTIVO=""
 ARGS=()
 ENVS=()
+CDEXEC=()
 
 # Relogio em ms (python3, porque o date do macOS nao tem %N).
 agora_ms() { python3 -I -c 'import time; print(int(time.time() * 1000))' | tr -d '\r'; }
@@ -120,7 +122,7 @@ rodar_caso() {
 
   rm -f "$FLAG"
   T0=$(agora_ms)
-  env "${ENVS[@]}" xcrun simctl spawn "$UDID" "$PAC/$NOME" "${ARGS[@]}" < "$STDIN_SRC" > "$OUT/$NOME.stdout" 2> "$OUT/$NOME.stderr" &
+  env "${ENVS[@]}" xcrun simctl spawn "$UDID" "${CDEXEC[@]}" "$PAC/$NOME" "${ARGS[@]}" < "$STDIN_SRC" > "$OUT/$NOME.stdout" 2> "$OUT/$NOME.stderr" &
   PID=$!
   vigiar "$PID" "$TMO" >/dev/null 2>&1 &
   VIG=$!
@@ -146,6 +148,18 @@ rodar_caso() {
   else registrar "$NOME" "$BASE" 0 "$RC" "$MS" "$MOTIVO"
   fi
   return 0
+}
+
+# Compila o cdexec.c (cwd novo por execucao) para o simulador; sem clang (ex.: selftest), roda direto.
+preparar_cdexec() {
+  CDEXEC=()
+  [ -f cdexec.c ] || { echo "cdexec: ausente (cwd compartilhado)" >> "$OUT/resumo.txt"; return 0; }
+  if xcrun --sdk iphonesimulator clang -arch arm64 -mios-simulator-version-min=15.0 -o "$PAC/../_cdexec" cdexec.c >> "$OUT/cdexec_build.txt" 2>&1; then
+    CDEXEC=("$(cd "$PAC/.." && pwd)/_cdexec")
+    echo "cdexec: ativo (cwd novo por binario)" >> "$OUT/resumo.txt"
+  else
+    echo "cdexec: nao compilou (cwd compartilhado)" >> "$OUT/resumo.txt"
+  fi
 }
 
 # Veredito: falhas fora dos canarios reprovam; canario que nao falha (todos os binarios) reprova.
@@ -197,6 +211,7 @@ print(a[-1][1] if a else "")
   xcrun simctl boot "$UDID"
   xcrun simctl bootstatus "$UDID" -b > "$OUT/bootstatus.txt" 2>&1
 
+  preparar_cdexec
   local BIN
   for BIN in "$PAC"/*_dev "$PAC"/*_release; do
     [ -f "$BIN" ] || continue
