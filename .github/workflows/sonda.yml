@@ -1,0 +1,22 @@
+name: sonda-ios
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "sonda.sh"
+      - "hello.c"
+      - ".github/workflows/sonda.yml"
+
+jobs:
+  sonda:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rodar a sonda
+        run: bash sonda.sh saida
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gabarito-sonda
+          path: saida/
