@@ -52,5 +52,19 @@ echo "EXIT_DIRETO=$?" | tee "$OUT/spawn.exit"
 xcrun simctl spawn "$UDID" /bin/sh -c "$PWD/$OUT/hello_clang; echo EXIT_VIA_SH=\$?" > "$OUT/spawn_sh.stdout" 2> "$OUT/spawn_sh.stderr"
 echo "spawn via sh: $?" >> "$OUT/spawn.exit"
 
+# 4. variante com fixups por OPCODES (LC_DYLD_INFO_ONLY) em vez de chained fixups: o dyld do simulador aceita?
+xcrun --sdk iphonesimulator clang -arch arm64 -target arm64-apple-ios15.0-simulator -Wl,-no_fixup_chains hello.c -o "$OUT/hello_opcodes"
+xcrun otool -l "$OUT/hello_opcodes" > "$OUT/hello_opcodes.otool_l.txt" 2>&1
+xcrun dyld_info -fixups -exports "$OUT/hello_opcodes" > "$OUT/hello_opcodes.dyld_info.txt" 2>&1
+xcrun codesign -dvvv "$OUT/hello_opcodes" > "$OUT/hello_opcodes.codesign.txt" 2>&1
+xcrun simctl spawn "$UDID" "$PWD/$OUT/hello_opcodes" > "$OUT/opcodes.stdout" 2> "$OUT/opcodes.stderr"
+echo "EXIT_OPCODES=$?" | tee "$OUT/opcodes.exit"
+
+# 5. variante MINIMA sem assinatura: o simulador exige assinatura? (remove a do ld64 e tenta rodar)
+cp "$OUT/hello_opcodes" "$OUT/hello_sem_assinatura"
+xcrun codesign --remove-signature "$OUT/hello_sem_assinatura" > "$OUT/sem_assinatura.remove.txt" 2>&1
+xcrun simctl spawn "$UDID" "$PWD/$OUT/hello_sem_assinatura" > "$OUT/semassin.stdout" 2> "$OUT/semassin.stderr"
+echo "EXIT_SEM_ASSINATURA=$?" | tee "$OUT/semassin.exit"
+
 xcrun simctl shutdown "$UDID"
 echo "FIM da sonda"
