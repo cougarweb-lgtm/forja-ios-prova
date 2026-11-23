@@ -5,6 +5,8 @@ on:
     paths:
       - "pacote/**"
       - "rodar_pacote.sh"
+      - "sondas_harness.sh"
+      - "pacote_i4.sha256"
       - ".github/workflows/pacote.yml"
 
 jobs:
@@ -20,3 +22,31 @@ jobs:
         with:
           name: resultado-pacote
           path: resultado/
+
+  i4:
+    if: hashFiles('pacote_i4.sha256') != ''
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar o pacote I4 do release lote-i4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download lote-i4 -p pacote_i4.tar.xz
+      - name: Conferir sha256 do pacote I4
+        run: |
+          ESPERADO=$(tr -d '\r\n ' < pacote_i4.sha256)
+          OBTIDO=$(shasum -a 256 pacote_i4.tar.xz | cut -d ' ' -f 1)
+          echo "esperado=$ESPERADO obtido=$OBTIDO"
+          [ "$ESPERADO" = "$OBTIDO" ] || { echo "sha256 do pacote_i4.tar.xz diferente do pacote_i4.sha256"; exit 1; }
+      - name: Extrair o pacote I4
+        run: tar -xJf pacote_i4.tar.xz
+      - name: Sondas do simctl spawn (so medem)
+        run: bash sondas_harness.sh resultado_i4
+      - name: Rodar o pacote I4 no simulador
+        run: bash rodar_pacote.sh pacote_i4 resultado_i4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultado-i4
+          path: resultado_i4/

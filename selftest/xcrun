@@ -1,0 +1,27 @@
+#!/bin/bash
+# xcrun FALSO do selftest_runner.sh: so simula `simctl list/boot/bootstatus/spawn/shutdown`.
+# Nao mede nada do iOS. Converte SIMCTL_CHILD_X em X (como o simctl faz) e executa o alvo do spawn.
+# Log de chamadas: se FAKE_XCRUN_LOG estiver definido, cada chamada e anotada nele.
+[ -n "$FAKE_XCRUN_LOG" ] && echo "xcrun $*" >> "$FAKE_XCRUN_LOG"
+if [ "$1" != simctl ]; then echo "xcrun falso: so simctl" >&2; exit 2; fi
+shift
+case "$1" in
+  list)
+    echo '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-18-0":[{"name":"iPhone 16","udid":"FAKE-UDID-0001","state":"Shutdown"}]}}'
+    ;;
+  boot|bootstatus|shutdown)
+    exit 0
+    ;;
+  spawn)
+    shift 2
+    for V in ${!SIMCTL_CHILD_*}; do
+      N="${V#SIMCTL_CHILD_}"
+      export "$N=${!V}"
+    done
+    exec "$@"
+    ;;
+  *)
+    echo "xcrun falso: nao suporta $*" >&2
+    exit 2
+    ;;
+esac
