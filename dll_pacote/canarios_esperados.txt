@@ -1,0 +1,2 @@
+canario_stdout_dev
+canario_exit_dev
